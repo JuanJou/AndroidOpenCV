@@ -117,8 +117,8 @@ public class MainActivity extends AppCompatActivity implements CvCameraViewListe
 
         // TODO Auto-generated method stub
         // Rotate mRgba 90 degrees
-        Imgproc.cvtColor(inputFrame.rgba(),mRgbaT,Imgproc.COLOR_BGR2HSV);
-        Core.inRange(mRgbaT,new Scalar(10,100,255),new Scalar(25,255,255),mRgba);
+        Imgproc.cvtColor(inputFrame.rgba(),mRgbaT,Imgproc.COLOR_BGR2HSV_FULL);
+        Core.inRange(mRgbaT,new Scalar(170,150,60),new Scalar(179,255,255),mRgba);
         Core.transpose(mRgba, mRgbaT);
         Imgproc.resize(mRgbaT, mRgbaF, mRgbaF.size(), 0,0, 0);
         Core.flip(mRgbaF, mRgba, 1 );

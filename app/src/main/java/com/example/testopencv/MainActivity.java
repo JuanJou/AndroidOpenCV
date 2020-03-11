@@ -18,6 +18,7 @@ import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
 public class MainActivity extends AppCompatActivity implements CvCameraViewListener2 {
 
@@ -103,9 +104,9 @@ public class MainActivity extends AppCompatActivity implements CvCameraViewListe
 
     public void onCameraViewStarted(int width, int height) {
 
-        mRgba = new Mat(height, width, CvType.CV_8UC4);
-        mRgbaF = new Mat(height, width, CvType.CV_8UC4);
-        mRgbaT = new Mat(width, width, CvType.CV_8UC4);
+        mRgba = new Mat(height, width, CvType.CV_8UC3);
+        mRgbaF = new Mat(height, width, CvType.CV_8UC3);
+        mRgbaT = new Mat(width, width, CvType.CV_8UC3);
     }
 
     public void onCameraViewStopped() {
@@ -115,11 +116,13 @@ public class MainActivity extends AppCompatActivity implements CvCameraViewListe
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
 
         // TODO Auto-generated method stub
-        mRgba = inputFrame.rgba();
         // Rotate mRgba 90 degrees
+        Imgproc.cvtColor(inputFrame.rgba(),mRgbaT,Imgproc.COLOR_BGR2HSV);
+        Core.inRange(mRgbaT,new Scalar(10,100,255),new Scalar(25,255,255),mRgba);
         Core.transpose(mRgba, mRgbaT);
         Imgproc.resize(mRgbaT, mRgbaF, mRgbaF.size(), 0,0, 0);
         Core.flip(mRgbaF, mRgba, 1 );
+
 
         return mRgba; // This function must return
     }

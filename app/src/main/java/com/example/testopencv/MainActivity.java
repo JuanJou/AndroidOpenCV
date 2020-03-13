@@ -2,40 +2,38 @@ package com.example.testopencv;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.app.Activity;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.MenuItem;
-import android.view.SurfaceView;
+import android.view.View;
 import android.view.WindowManager;
+import android.widget.ImageView;
 
-import org.opencv.android.JavaCameraView;
 import org.opencv.android.BaseLoaderCallback;
-import org.opencv.android.CameraBridgeViewBase;
-import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
-import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
+import org.opencv.android.Utils;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
-public class MainActivity extends AppCompatActivity implements CvCameraViewListener2 {
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+
+public class MainActivity extends AppCompatActivity {
 
     // Used for logging success or failure messages
     private static final String TAG = "OCVSample::Activity";
-
-    // Loads camera view of OpenCV for us to use. This lets us see using OpenCV
-    private CameraBridgeViewBase mOpenCvCameraView;
-
-    // Used in Camera selection from menu (when implemented)
-    private boolean              mIsJavaCamera = true;
+    private static final int GALLERY_REQUEST_CODE = 1889;
     private MenuItem mItemSwitchCamera = null;
-
-    // These variables are used (at the moment) to fix camera orientation from 270degree to 0degree
-    Mat mRgba;
-    Mat mRgbaF;
-    Mat mRgbaT;
+    private ImageView imageView;
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -43,8 +41,7 @@ public class MainActivity extends AppCompatActivity implements CvCameraViewListe
             switch (status) {
                 case LoaderCallbackInterface.SUCCESS:
                 {
-                    Log.i(TAG, "OpenCV loaded successfully");
-                    mOpenCvCameraView.enableView();
+                    Log.i("OpenCV", "OpenCV loaded successfully");
                 } break;
                 default:
                 {
@@ -53,6 +50,7 @@ public class MainActivity extends AppCompatActivity implements CvCameraViewListe
             }
         }
     };
+
 
     public MainActivity() {
         Log.i(TAG, "Instantiated new " + this.getClass());
@@ -68,19 +66,7 @@ public class MainActivity extends AppCompatActivity implements CvCameraViewListe
 
         setContentView(R.layout.show_camera);
 
-        mOpenCvCameraView = (JavaCameraView) findViewById(R.id.show_camera_activity_java_surface_view);
-
-        mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
-
-        mOpenCvCameraView.setCvCameraViewListener(this);
-    }
-
-    @Override
-    public void onPause()
-    {
-        super.onPause();
-        if (mOpenCvCameraView != null)
-            mOpenCvCameraView.disableView();
+        imageView = (ImageView) findViewById(R.id.image1);
     }
 
     @Override
@@ -88,42 +74,50 @@ public class MainActivity extends AppCompatActivity implements CvCameraViewListe
     {
         super.onResume();
         if (!OpenCVLoader.initDebug()) {
-            Log.d(TAG, "Internal OpenCV library not found. Using OpenCV Manager for initialization");
+            Log.d("OpenCV", "Internal OpenCV library not found. Using OpenCV Manager for initialization");
             OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
         } else {
-            Log.d(TAG, "OpenCV library found inside package. Using it!");
+            Log.d("OpenCV", "OpenCV library found inside package. Using it!");
             mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
         }
     }
 
-    public void onDestroy() {
-        super.onDestroy();
-        if (mOpenCvCameraView != null)
-            mOpenCvCameraView.disableView();
+
+    public void pickFromGallery(View view) {
+        Intent intent = new Intent(Intent.ACTION_PICK);
+        intent.setType("image/*");
+        String[] mimeTypes= {"image/jpeg","image/png"};
+        intent.putExtra(Intent.EXTRA_MIME_TYPES,mimeTypes);
+        // Launching the Intent
+        startActivityForResult(intent,GALLERY_REQUEST_CODE);
     }
 
-    public void onCameraViewStarted(int width, int height) {
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        Bitmap bitmap = null;
+        if (resultCode == Activity.RESULT_OK)
+            switch (requestCode){
+                case GALLERY_REQUEST_CODE:
+                    //data.getData returns the content URI for the selected Image
+                    Uri selectedImage = data.getData();
+                    try {
+                        bitmap = Bitmap.createBitmap(MediaStore.Images.Media.getBitmap(getContentResolver(),selectedImage));
+                    }
+                    catch(FileNotFoundException f){
+                    }
+                    catch (IOException e) {
 
-        mRgba = new Mat(height, width, CvType.CV_8UC3);
-        mRgbaF = new Mat(height, width, CvType.CV_8UC3);
-        mRgbaT = new Mat(width, width, CvType.CV_8UC3);
-    }
-
-    public void onCameraViewStopped() {
-        mRgba.release();
-    }
-
-    public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
-
-        // TODO Auto-generated method stub
-        // Rotate mRgba 90 degrees
-        Imgproc.cvtColor(inputFrame.rgba(),mRgbaT,Imgproc.COLOR_BGR2HSV_FULL);
-        Core.inRange(mRgbaT,new Scalar(170,150,60),new Scalar(179,255,255),mRgba);
-        Core.transpose(mRgba, mRgbaT);
-        Imgproc.resize(mRgbaT, mRgbaF, mRgbaF.size(), 0,0, 0);
-        Core.flip(mRgbaF, mRgba, 1 );
-
-
-        return mRgba; // This function must return
+                    }
+                    Mat image = new Mat(bitmap.getHeight(),bitmap.getWidth(),CvType.CV_8UC4);
+                    Utils.bitmapToMat(bitmap,image);
+                    Mat mask =new Mat(bitmap.getHeight(),bitmap.getWidth(),CvType.CV_8UC1);
+                    Mat processedImage =new Mat(bitmap.getHeight(),bitmap.getWidth(),CvType.CV_8UC4);
+                    Imgproc.cvtColor(image,processedImage,Imgproc.COLOR_RGB2HSV);
+                    Core.inRange(processedImage,new Scalar(0,150,0),new Scalar(10,255,255),mask);
+                    Core.bitwise_and(image,image,processedImage,mask);
+                    Utils.matToBitmap(processedImage,bitmap);
+                    imageView.setImageBitmap(bitmap);
+                    break;
+            }
     }
 }
